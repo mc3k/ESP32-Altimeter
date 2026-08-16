@@ -1,6 +1,13 @@
 /*
-
+//  u8g2.drawBitmap(32, 0, 32/8, 30, Compass_30_NE);
+//  u8g2.drawBitmap(0, 0, 32/8, 30, getCompassBitmap(90));
 */
+
+#ifndef COMPASS_30_INC_H
+#define COMPASS_30_INC_H
+
+#include <Arduino.h>
+#include <U8g2lib.h>
 
 // 'Compass_30_NN', 30x30px
 const unsigned char Compass_30_NN [] PROGMEM = {
@@ -92,7 +99,7 @@ const unsigned char Compass_30_NW [] PROGMEM = {
 };
 
 
-const unsigned char* getCompassBitmap(float num) {
+inline const unsigned char* getCompassBitmap(float num) {
   int val = int(((360-num) / 45) + 0.5);
   const unsigned char* arr[] = {
     Compass_30_NN, Compass_30_NE, Compass_30_EE, Compass_30_SE, Compass_30_SS, Compass_30_SW, Compass_30_WW, Compass_30_NW
@@ -101,5 +108,4 @@ const unsigned char* getCompassBitmap(float num) {
   return arr[val % 8]; 
 }
 
-//  u8g2.drawBitmap(32, 0, 32/8, 30, Compass_30_NE);
-//  u8g2.drawBitmap(0, 0, 32/8, 30, getCompassBitmap(90));
+#endif
