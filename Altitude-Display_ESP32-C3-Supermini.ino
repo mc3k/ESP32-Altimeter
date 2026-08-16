@@ -51,6 +51,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
 
 const int graphWidth = 80;
 const int altPtsCnt = 15;
+const bool resetOnBoot = false;
 unsigned long logInterval = 60000;
 
 struct GPSPoint { double lon; double lat; double dist; double alt; };
@@ -227,14 +228,19 @@ void setup(void) {
     u8g2.setBusClock(400000);
 
     // Restore altitude from memory
-    preferences.begin("gps_history", false);
-    lastStoredDate = preferences.getUInt("saved_date", 0);
-    Serial.print("Last stored date: ");Serial.println(lastStoredDate);
-    graphPointsCount = preferences.getInt("pt_count", 0);
-    if (graphPointsCount > 0) {
-      preferences.getBytes("history_arr", signalHistory, sizeof(signalHistory));
+    if (resetOnBoot) {
+      Serial.println("Boot flag active: Purging old data profiles.");
+      clearHistoryProfile(0); 
+    } else {
+      // Standard restore payload behavior
+      preferences.begin("gps_history", false);
+      lastStoredDate = preferences.getUInt("saved_date", 0);
+      graphPointsCount = preferences.getInt("pt_count", 0);
+      if (graphPointsCount > 0) {
+        preferences.getBytes("history_arr", signalHistory, sizeof(signalHistory));
+      }
+      preferences.end();
     }
-    preferences.end();
 }
 
 void loop(void) {
