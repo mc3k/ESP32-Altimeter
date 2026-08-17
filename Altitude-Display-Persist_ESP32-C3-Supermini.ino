@@ -2,7 +2,7 @@
  * @file Altitude-Display_ESP32-C3-Supermini.ino
  * @brief ESP32-C3 Supermini GPS Altimeter with Altitude History Graph & Slope Tracking
  * @author Marty Childs <www.childs.be>
- * @date 2026-08-16
+ * @date 2026-08-17
  * @version 1.0.42.persist
  * @license MIT (or Apache-2.0 / GPL-3.0)
  * 
