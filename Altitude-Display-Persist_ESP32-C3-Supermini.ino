@@ -55,7 +55,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
 
 const int graphWidth = 80;
 const int altPtsCnt = 15;
-const bool resetOnBoot = true;
+const bool resetOnBoot = false;
 unsigned long logInterval = 60000;
 
 struct GPSPoint { double lon; double lat; double dist; double alt; };
