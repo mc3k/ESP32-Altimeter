@@ -108,4 +108,10 @@ inline const unsigned char* getCompassBitmap(float num) {
   return arr[val % 8]; 
 }
 
+inline const char* getHeading(float num) {
+  int val = int((num / 45) + 0.5);
+  static const char* arr[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
+  return arr[val % 8];
+}
+
 #endif
