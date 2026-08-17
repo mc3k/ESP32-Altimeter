@@ -25,12 +25,10 @@
  *   GPIO 6 (SDA)    <--> OLED SDA
  *   GPIO 7 (SCL)    <--> OLED SCL
  *   GPIO 20 (RX)    <--> GPS TX
- *   GPIO 21 (TX)    <--> GPS RX
  *   [Arduino Nano]
  *   A4 (SDA)        <--> OLED SDA
  *   A5 (SCL)        <--> OLED SCL
  *   D4 (RX)         <--> GPS TX
- *   D5 (TX)         <--> GPS RX
  *   [Common]
  *   GND             <--> Common Ground
  *   5V              <--> GPS VCC
