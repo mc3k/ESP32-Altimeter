@@ -3,7 +3,7 @@
  * @brief ESP32-C3 Supermini GPS Altimeter with Altitude History Graph & Slope Tracking
  * @author Marty Childs <www.childs.be>
  * @date 2026-08-16
- * @version 1.0.40
+ * @version 1.0.42.persist
  * @license MIT (or Apache-2.0 / GPL-3.0)
  * 
  * @description
@@ -51,7 +51,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
 
 const int graphWidth = 80;
 const int altPtsCnt = 15;
-const bool resetOnBoot = false;
+const bool resetOnBoot = true;
 unsigned long logInterval = 60000;
 
 struct GPSPoint { double lon; double lat; double dist; double alt; };
@@ -153,6 +153,35 @@ void drawLockStatus(int x, int y, int sat, double hdop) {
   else {
     u8g2.drawRFrame(x, y, 13, 9, 1);
     u8g2.drawStr(x + 2, y + 7, "NO");
+  }
+}
+
+void drawSigBars(int x, int y, int sat, double hdop) {
+  int numBars = 0;
+  if (hdop <= 1) numBars = 5;
+  else if (hdop <= 2.5) numBars = 4;
+  else if (hdop <= 5) numBars = 3;
+  else if (hdop <= 10) numBars = 2;
+  else numBars = 1;
+
+  int fillBars = 0;
+  if (sat > 12) fillBars = 5;
+  else if (sat > 7) fillBars = 4;
+  else if (sat > 6) fillBars = 3;
+  else if (sat > 4) fillBars = 2;
+  else if (sat > 0) fillBars = 1;
+
+  for (int i = 0; i < 5; i++) {
+    int barHeight = (i + 1) * 4;
+    int barX = x + (i * 5);
+    int barY = (y + 20) - barHeight;
+
+    if (i < fillBars) {
+      u8g2.drawRBox(barX, barY, 4, barHeight, 1);
+    }
+    if (i < numBars) {
+      u8g2.drawRFrame(barX, barY, 4, barHeight, 1);
+    }
   }
 }
 
@@ -331,11 +360,12 @@ void loop(void) {
         altDisplay(128, 28, gps.altitude.meters());
         slopeDisplay(128, 64, slope);
         historyGraph(0, 34);
-
       }
       else {    // No gps lock
         u8g2.drawBox(0, 34, (gps.charsProcessed() % 12800)/100, 30);
+        u8g2.drawBitmap(0, 0, 32 / 8, 30, getCompassBitmap(gps.charsProcessed() % 360));
         failDisplay(128, 28, gps.failedChecksum());
+        drawSigBars(34, 3, gps.satellites.value(), gps.hdop.value() / 100.0 );
       }
       if ( (gps.hdop.value() / 100.0) > 2.5 ) {
         drawLockStatus(34, 0, gps.satellites.value(), gps.hdop.value() / 100.0 ); 
