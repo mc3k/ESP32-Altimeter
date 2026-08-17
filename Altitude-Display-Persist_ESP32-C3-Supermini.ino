@@ -7,9 +7,13 @@
  * @license MIT (or Apache-2.0 / GPL-3.0)
  * 
  * @description
- * An ultra-compact wearable/bike computer that tracks real-time altitude, slope gradient (%), 
- * and heading using an SSD1306 128x64 OLED display over I2C and a standard 9600-baud GPS module.
- * Features automated daily resets and persistent graph history storage across reboots using Preferences.
+ * An ESP32 powered device that tracks real-time altitude, slope gradient (%) and heading 
+ * using an SSD1306 128x64 OLED display over I2C and a standard 9600-baud GPS module.
+ * Features automated daily resets and persistent graph history using internal storage.
+ *
+ * @warning
+ * EXPERIMENTAL - constantly writes to NVS which is only rated to 100,000 operations so will
+ * permantly damage your device
  * 
  * @hardware
  * - Microcontroller: ESP32-C3 Supermini
