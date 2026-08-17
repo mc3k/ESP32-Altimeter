@@ -12,8 +12,8 @@
  * Features automated daily resets and persistent graph history using internal storage.
  *
  * @warning
- * EXPERIMENTAL - constantly writes to NVS which is only rated to 100,000 operations so will
- * permantly damage your device
+ * EXPERIMENTAL - constantly writes to NVS flash which is only rated to 100,000 operations
+ * which will permanently damage your device
  * 
  * @hardware
  * - Microcontroller: ESP32-C3 Supermini
