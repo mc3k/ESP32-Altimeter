@@ -2,8 +2,8 @@
  * @file Altitude-Display_ESP32-C3-Supermini.ino
  * @brief ESP32 / Arduino GPS Altimeter with Altitude History Graph & Slope Tracking
  * @author Marty Childs <www.childs.be>
- * @date 2026-08-17
- * @version 1.0.4
+ * @date 2026-08-18
+ * @version 1.0.4.1
  * @license MIT (or Apache-2.0 / GPL-3.0)
  * 
  * @description
@@ -116,10 +116,9 @@ void historyGraph(uint8_t x, uint8_t y, uint8_t gWidth=graphWidth, uint8_t gHeig
     }
     
     if (gps.altitude.meters() < 10000) {
-      u8g2.setFont(u8g2_font_helvB10_tr);
+      u8g2.setFont(u8g2_font_helvB10_tn);
       u8g2.setCursor(41, 34); 
       u8g2.print(currentRange);
-      u8g2.setFont(u8g2_font_helvB08_tr);
     }
 }
 
