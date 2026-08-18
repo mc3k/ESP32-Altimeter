@@ -2,9 +2,9 @@
  * @file Altitude-Display_ESP32-C3-Supermini.ino
  * @brief ESP32-C3 Supermini GPS Altimeter with Altitude History Graph & Slope Tracking
  * @author Marty Childs <www.childs.be>
- * @date 2026-08-17
- * @version 1.0.42.persist
- * @license MIT (or Apache-2.0 / GPL-3.0)
+ * @date 2026-08-18
+ * @version 1.0.44.persist
+ * @license MIT
  * 
  * @description
  * An ESP32 powered device that tracks real-time altitude, slope gradient (%) and heading 
@@ -34,6 +34,7 @@
  * - U8g2 by olikraus (OLED driver library)
  * - TinyGPS++ by mikalhart (GPS parsing library)
  * - Preferences (Built-in ESP32 core storage library)
+ * - Sunset by Peter Buelow (Sunrise/set from GPS)
  */
 
 
@@ -42,6 +43,7 @@
 #include <Wire.h>
 #include <Preferences.h>
 #include <TinyGPS++.h>
+#include <sunset.h>
 #include "Compass_30.inc.h"
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
@@ -71,6 +73,12 @@ double slope = 0;
 
 Preferences preferences;
 TinyGPSPlus gps;
+SunSet sun;
+
+// Brightness parameters (0 to 255)
+const uint8_t DAY_BRIGHTNESS = 255;
+const uint8_t NIGHT_BRIGHTNESS = 15; 
+uint8_t currentBrightness = 15;
 
 void historyGraph(int x, int y, int gWidth=graphWidth, int gHeight=30) {
     if (graphPointsCount == 0) return; 
@@ -250,6 +258,27 @@ void clearHistoryProfile(uint32_t newDateReference) {
     Serial.println(lastStoredDate);
 }
 
+void displayDim() {
+  if (gps.location.isValid() && gps.date.isValid() && gps.time.isValid()) {
+	sun.setPosition(gps.location.lat(), gps.location.lng(), 0.0);
+    sun.setCurrentDate(gps.date.year(), gps.date.month(), gps.date.day());
+
+	int sunriseMin = static_cast<int>(sun.calcSunrise());
+    int sunsetMin = static_cast<int>(sun.calcSunset());
+    int currentMin = (gps.time.hour() * 60) + gps.time.minute();
+    bool isDaytime = (currentMin >= sunriseMin && currentMin < sunsetMin);
+    uint8_t targetBrightness = isDaytime ? DAY_BRIGHTNESS : NIGHT_BRIGHTNESS;
+
+	if (currentBrightness != targetBrightness) {
+      currentBrightness = targetBrightness;
+      u8g2.setContrast(currentBrightness); 
+    }
+  }
+  else {
+    u8g2.setContrast(NIGHT_BRIGHTNESS); 
+  }
+}
+
 void setup(void) {
     Serial.begin(115200);
     delay(500);
@@ -259,6 +288,7 @@ void setup(void) {
     Serial1.begin(GPS_BAUDRATE, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
     u8g2.begin();
     u8g2.setBusClock(400000);
+	u8g2.setContrast(currentBrightness);
 
     // Restore altitude from memory
     if (resetOnBoot) {
@@ -360,20 +390,21 @@ void loop(void) {
     u8g2.firstPage();
     do {   // When there is gps lock
       if ( (gps.hdop.value() / 100.0) < 5.0 && (gps.satellites.value() > 3) ) {
-        u8g2.drawBitmap(0, 0, 32 / 8, 30, getCompassBitmap(gps.course.deg()));
+		    u8g2.drawXBMP(0, 0, 32, 30, getCompassBitmap(gps.course.deg()));
         altDisplay(128, 28, gps.altitude.meters());
         slopeDisplay(128, 64, slope);
         historyGraph(0, 34);
       }
       else {    // No gps lock
         u8g2.drawBox(0, 34, (gps.charsProcessed() % 12800)/100, 30);
-        u8g2.drawBitmap(0, 0, 32 / 8, 30, getCompassBitmap(gps.charsProcessed() % 360));
+        u8g2.drawXBMP(0, 0, 32, 30, getCompassBitmap(millis() % 360));
         failDisplay(128, 28, gps.failedChecksum());
         drawSigBars(34, 3, gps.satellites.value(), gps.hdop.value() / 100.0 );
       }
       if ( (gps.hdop.value() / 100.0) > 2.5 ) {
         drawLockStatus(34, 0, gps.satellites.value(), gps.hdop.value() / 100.0 ); 
       }
+      displayDim();
     } while (u8g2.nextPage());
   }
 }
