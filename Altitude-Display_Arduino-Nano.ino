@@ -3,14 +3,14 @@
  * @brief ESP32 / Arduino GPS Altimeter with Altitude History Graph & Slope Tracking
  * @author Marty Childs <www.childs.be>
  * @date 2026-08-18
- * @version 1.0.4.1
- * @license MIT (or Apache-2.0 / GPL-3.0)
- * 
+ * @version 1.0.6
+ * @license MIT
+ *
  * @description
- * An Nano powered device that tracks real-time altitude, slope gradient (%) and heading 
+ * An Nano powered device that tracks real-time altitude, slope gradient (%) and heading
  * using an SSD1306 128x64 OLED display over I2C and a standard 9600-baud GPS module.
  * Features automated daily resets and persistent graph history using internal storage.
- * 
+ *
  * @additional
  * A port of the full ESP32-C3 version slimmed down to fit a Nano's harware limitations,
  * it still works on the ESP32.
@@ -19,21 +19,22 @@
  * - Microcontroller: Arduino Nano / ESP32-C3 Supermini / ESP32-C3 Mini
  * - Display: SSD1306 128x64 I2C OLED Display
  * - GPS Module: NEO-6M / BN-220 or compatible (9600 Baud default)
- * 
+ *
  * @pinout
  *   [ESP32-C3 Mini]
  *   GPIO 6 (SDA)    <--> OLED SDA
  *   GPIO 7 (SCL)    <--> OLED SCL
  *   GPIO 20 (RX)    <--> GPS TX
  *   [Arduino Nano]
- *   A4 (SDA)        <--> OLED SDA
- *   A5 (SCL)        <--> OLED SCL
+ *   A4 / D18 (SDA)  <--> OLED SDA
+ *   A5 / D19 (SCL)  <--> OLED SCL
  *   D4 (RX)         <--> GPS TX
+ *   D5 (TX)         <--> GPS RX (not used)
  *   [Common]
  *   GND             <--> Common Ground
  *   5V              <--> GPS VCC
  *   3V3             <--> OLED VCC
- * 
+ *
  * @dependencies
  * - U8g2 by olikraus (OLED driver library)
  * - TinyGPS++ by mikalhart (GPS parsing library)
@@ -45,12 +46,13 @@
 #include <Wire.h>
 #include <TinyGPS++.h>
 #include "Compass_30.inc.h"
+#include "Sunrise.inc.h"
 
 #if defined(ARDUINO_AVR_NANO)
   #include <SoftwareSerial.h>
 #endif
 
-U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
+U8G2_SSD1306_128X64_NONAME_2_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
 
 #if defined(ARDUINO_ARCH_ESP32)
   #define I2C_SDA 6 
@@ -81,19 +83,16 @@ double slope = 0;
 
 TinyGPSPlus gps;
 
-void historyGraph(uint8_t x, uint8_t y, uint8_t gWidth=graphWidth, uint8_t gHeight=30) {
+void historyGraph(int x, int y, int gWidth=graphWidth, int gHeight=30) {
     if (graphPointsCount == 0) return; 
 
-    int8_t maxVal = -128; 
-    int8_t minVal = 127;  
+    int maxAltitude = -32768; 
+    int minAltitude = 32767;  
 
-    for (uint8_t i = 0; i < graphPointsCount; i++) {
-      if (signalHistory[i] > maxVal) maxVal = signalHistory[i];
-      if (signalHistory[i] < minVal) minVal = signalHistory[i];
+    for (int i = 0; i < graphPointsCount; i++) {
+      if (signalHistory[i] > maxAltitude) maxAltitude = signalHistory[i];
+      if (signalHistory[i] < minAltitude) minAltitude = signalHistory[i];
     }
-
-    int maxAltitude = (int)maxVal * 40;
-    int minAltitude = (int)minVal * 40;
 
     int currentRange = maxAltitude - minAltitude;
     if (currentRange < 100) {
@@ -103,9 +102,8 @@ void historyGraph(uint8_t x, uint8_t y, uint8_t gWidth=graphWidth, uint8_t gHeig
 
     float pointWidth = (float)graphWidth / (float)graphPointsCount;
 
-    for (uint8_t i = 0; i < graphPointsCount; i++) {
-      int actualAltValue = (int)signalHistory[i] * 40;
-      int dataHeight = map(actualAltValue, minAltitude, maxAltitude, 1, gHeight);
+    for (int i = 0; i < graphPointsCount; i++) {
+      int dataHeight = map(signalHistory[i], minAltitude, maxAltitude, 1, gHeight);
       int yStart = y + gHeight - dataHeight;
       
       int startX = x + int(i * pointWidth);
@@ -197,6 +195,7 @@ void setup(void) {
     
     u8g2.begin();
     u8g2.setBusClock(400000);
+    u8g2.setContrast(0);
 }
 
 void loop(void) {
@@ -210,7 +209,7 @@ void loop(void) {
     }
   #endif
  
-  if (gps.location.isValid()) { 
+  if (gps.location.isValid() && gps.date.isValid() && gps.time.isValid()) { 
     if ((millis() - lastAltTime) >= 1000) {
       if (path[altPtsCnt - 1].lat == 0 && path[altPtsCnt - 1].lon == 0) {
         for (uint8_t i = 0; i < altPtsCnt; i++) {
@@ -235,6 +234,8 @@ void loop(void) {
       }
       
       slope = gradientCalc();
+      calculateSolarTimes( gps.location.lat(), gps.location.lng(), gps.date.year(), gps.date.month(), gps.date.day() );
+      u8g2.setContrast(displayDim(gps.time.hour(), gps.time.minute()));
       lastAltTime = millis();
     }
 
@@ -268,13 +269,14 @@ void loop(void) {
     u8g2.firstPage();
     do {   
       if ( (gps.hdop.value() / 100.0) < 5.0 && (gps.satellites.value() > 3) ) {
-        u8g2.drawBitmap(0, 0, 32 / 8, 30, getCompassBitmap(gps.course.deg()));
+        u8g2.drawXBMP(0, 0, 32, 30, getCompassBitmap(gps.course.deg()));
         altDisplay(128, 28, gps.altitude.meters());
         slopeDisplay(128, 64, slope);
         historyGraph(0, 34);
       }
       else {    
         u8g2.drawBox(0, 34, (gps.charsProcessed() % 12800)/100, 30);
+        u8g2.drawXBMP(0, 0, 32, 30, getCompassBitmap(millis() % 360));
       }
     } while (u8g2.nextPage());
   }
