@@ -390,7 +390,7 @@ void loop(void) {
     u8g2.firstPage();
     do {   // When there is gps lock
       if ( (gps.hdop.value() / 100.0) < 5.0 && (gps.satellites.value() > 3) ) {
-		    u8g2.drawXBMP(0, 0, 32, 30, getCompassBitmap(gps.course.deg()));
+        u8g2.drawXBMP(0, 0, 32, 30, getCompassBitmap(gps.course.deg()));
         altDisplay(128, 28, gps.altitude.meters());
         slopeDisplay(128, 64, slope);
         historyGraph(0, 34);
